@@ -14,7 +14,7 @@ cdata <- unique(as.character(SCC$SCC[grepl("Coal", SCC$EI.Sector)]))
 coal <- subset(NEI, SCC %in% cdata)
 
 #total emission each year
-sm0 <- with(cl1, tapply(Emissions, year, sum, na.rm = T))
+sm0 <- with(coal, tapply(Emissions, year, sum, na.rm = T))
 sm1 <- paste(as.integer(sm0), "Tons|")
 cap <- paste("1999 Total:", sm1[1], "2002 Total:", sm1[2], "2005 Total:", 
              sm1[3], "2008 Total:", 
@@ -59,10 +59,30 @@ colnames(ctop) <- c("fips", "Emissions1999", "Emissions2002", "Emissions2005",
 tot <- aggregate(Emissions ~ year, data = coal, FUN = sum)
 
 #plotting of prevalent county&source wise plots and overall changes
+g1<- subset(ctop, Emissions1999 < 200)
+
 par(mfrow = c(1,2), mar = c(6, 5, 2, 1), oma = c(0, 0, 2, 0))
+with(g1, plot(rep(1999, 860), g1[, 2], xlim = c(1998, 2010), 
+              ylim = c(0, 250), 
+              main = "Emission Below 200 Tons",
+              sub = "Coal Combustion-Related Sources",
+              xlab = "Years 1999 - 2008",
+              ylab = "PM2.5 Emission in Tons"))
+with(g1, points(rep(2002, 860), g1[, 3]))
+with(g1, points(rep(2005, 860), g1[, 4]))
+with(g1, points(rep(2008, 860), g1[, 5]))
+segments(rep(1999, 860), g1[,2], rep(2002, 860), g1[,3],
+         col = rgb(red = 0, green = 0, blue = 1, alpha = 0.2))
+segments(rep(2002, 860), g1[,3], rep(2005, 860), g1[,4],
+         col = rgb(red = 0, green = 0, blue = 1, alpha = 0.2))
+segments(rep(2005, 860), g1[,4], rep(2008, 860), g1[,5],
+         col = rgb(red = 0, green = 0, blue = 1, alpha = 0.2))
+mtext(cap, outer = TRUE, cex = 0.8)
+
+#plot2
 with(ctop, plot(rep(1999, 1103), ctop[, 2], xlim = c(1998, 2010), 
                 ylim = c(0, 28000), 
-                main = "County-Wise Emission",
+                main = "All Sources - Emissions",
                 sub = "Coal Combustion-Related Sources",
                 xlab = "Years 1999 - 2008",
                 ylab = "PM2.5 Emission in Tons"))
@@ -76,10 +96,6 @@ segments(rep(2002, 1103), ctop[,3], rep(2005, 1103), ctop[,4],
 segments(rep(2005, 1103), ctop[,4], rep(2008, 1103), ctop[,5],
          col = rgb(red = 0, green = 0, blue = 1, alpha = 0.2))
 mtext(cap, outer = TRUE, cex = 0.8)
-with(tot, plot(year, Emissions, xlab = "Years 1999 - 2008",
-               ylab = "PM2.5 Emission in Tons",
-               sub = "Yearly Total Country Emissions"))
-abline(lm(Emissions ~ year, tot))
 
 dev.copy(png, file = "plot4.png")
 dev.off()
