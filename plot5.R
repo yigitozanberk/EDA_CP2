@@ -4,39 +4,33 @@
 library(ggplot2)
 library(dplyr)
 library(reshape2)
+library(gridExtra)
 #read data
 NEI <- readRDS("summarySCC_PM25.rds")
 SCC <- readRDS("Source_Classification_Code.rds")
 
-#subset the identifiers of coal combustion related data
-cdata <- unique(as.character(SCC$SCC[grepl("Vehicle", SCC$EI.Sector)]))
+#subset the identifiers of vehicle related data
+onRoadClassifiers <- filter(SCC, 
+                            grepl("^(on-road|onroad)$", 
+                                  Data.Category, ignore.case = TRUE)) 
+nonRoadClassifiers <- filter(SCC, 
+                             grepl("^(non-road|nonroad)$", 
+                                   Data.Category, ignore.case = TRUE))
+onRoad <- NEI %>% filter(fips == 24510, SCC %in% onRoadClassifiers$SCC) %>% group_by(year)
 
-#subset the actual data
-vehicle <- subset(NEI, SCC %in% cdata)
+nonRoad <- NEI %>% filter(fips == 24510, 
+                          SCC %in% nonRoadClassifiers$SCC) %>% group_by(year)
 
-#subset for baltimore city
-vehic <- subset(vehicle, fips == "24510")
-#vehicles with emission more than 1 ton per year
-heavy_v <- subset(vehic, Emissions >= 1)
-#vehicles with emission less than 1 ton per year
-normal_v <- subset(vehic, Emissions < 1)
+onRoadSummary <- summarize_at(onRoad, vars(Emissions), sum)
 
-#total emission each year
-sm0 <- with(vehic, tapply(Emissions, year, sum, na.rm = T))
-sm1 <- paste(as.integer(sm0), "Tons|")
-cap <- paste("1999 Total:", sm1[1], "2002 Total:", sm1[2], "2005 Total:", 
-             sm1[3], "2008 Total:", 
-             sm1[4], sep = " ")
+nonRoadSummary <- summarize_at(nonRoad, vars(Emissions), sum)
 
-
-#Emission levels < 1 by SCC codes boxplot
-g1 <- qplot(x = Emissions, data = normal_v, 
-            facets = .~year) + labs(subtitle = "Boxplot: Yearly Emissions Below 1 Ton")
-g1 <- g1 + ggtitle(cap) + theme(plot.title = element_text(size = 10))
-
-#Emission levels >= 1 by SCC codes boxplot
-g2 <- qplot(x = Emissions, data = heavy_v, 
-            facets = .~year) + labs(subtitle = "Boxplot: Yearly Emissions Above 1 Ton")
+g1 <- ggplot(onRoadSummary, aes(year, Emissions)) + geom_area(fill = "blue")
+g1 <- g1 + coord_cartesian(ylim = c(0, 380))
+g1 <- g1 + ggtitle("On Road Sources of Emission - Baltimore")
+g2 <- ggplot(nonRoadSummary, aes(year, Emissions)) + geom_area(fill = "pink")
+g2 <- g2 + coord_cartesian(ylim = c(0, 380))
+g2 <- g2 + ggtitle("Non Road Sources of Emission - Baltimore")
 grid.arrange(g1, g2, nrow = 2)
 
 dev.copy(png, file = "plot5.png")

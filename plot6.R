@@ -1,52 +1,56 @@
+
 #plot6.R
 #initiation
 library(ggplot2)
 library(dplyr)
 library(reshape2)
+library(gridExtra)
 #read data
 NEI <- readRDS("summarySCC_PM25.rds")
 SCC <- readRDS("Source_Classification_Code.rds")
 
-#subset the identifiers of coal combustion related data
-cdata <- unique(as.character(SCC$SCC[grepl("Vehicle", SCC$EI.Sector)]))
+#subset the identifiers of vehicle related data
+onRoadClassifiers <- filter(SCC, 
+                            grepl("^(on-road|onroad)$", 
+                                  Data.Category, ignore.case = TRUE)) 
+nonRoadClassifiers <- filter(SCC, 
+                             grepl("^(non-road|nonroad)$", 
+                                   Data.Category, ignore.case = TRUE))
+#baltimore
+onRoad <- NEI %>% filter(fips == 24510, SCC %in% onRoadClassifiers$SCC) %>% group_by(year)
 
-#subset the actual data
-vehicle <- subset(NEI, SCC %in% cdata)
+nonRoad <- NEI %>% filter(fips == 24510, 
+                          SCC %in% nonRoadClassifiers$SCC) %>% group_by(year)
 
-#subset for baltimore city
-bal_vehic <- subset(vehicle, fips == "24510")
+onRoadSummary <- summarize_at(onRoad, vars(Emissions), sum)
 
-#subset for LA
-la_vehic <- subset(vehicle, fips=="06037")
+nonRoadSummary <- summarize_at(nonRoad, vars(Emissions), sum)
 
-#baltimore emission sums
-balsum <- aggregate(Emissions ~ year, data = bal_vehic, FUN = sum)
-#means
-balmean <- aggregate(Emissions ~ year, data = bal_vehic, FUN = mean)
+g1 <- ggplot(onRoadSummary, aes(year, Emissions)) + geom_area(fill = "blue")
+g1 <- g1 + coord_cartesian(ylim = c(0, 4800))
+g1 <- g1 + ggtitle("On Road - Baltimore")
+g2 <- ggplot(nonRoadSummary, aes(year, Emissions)) + geom_area(fill = "pink")
+g2 <- g2 + coord_cartesian(ylim = c(0, 4800))
+g2 <- g2 + ggtitle("Non Road - Baltimore")
 
-#LA emission sums
-lasum <- aggregate(Emissions ~ year, data = la_vehic, FUN = sum)
-#means
-lamean <- aggregate(Emissions ~ year, data = la_vehic, FUN = mean)
+#la
+onRoadla <- NEI %>% filter(fips == "06037", SCC %in% onRoadClassifiers$SCC) %>% group_by(year)
 
-#total data
-mydat <- cbind(balsum, balmean[,2], lasum[,2], lamean[,2])
-colnames(mydat) <- c("year", "balsum", "balmean", "lasum", "lamean")
+nonRoadla <- NEI %>% filter(fips == "06037", 
+                            SCC %in% nonRoadClassifiers$SCC) %>% group_by(year)
 
-#Emission levels < 1 by SCC codes boxplot
-g1 <- ggplot(balsum, aes(year, Emissions)) + geom_point() 
-g1 <- g1 + geom_smooth(method = "lm") + coord_cartesian(ylim = c(0, 5000))
-g1 <- g1 + ggtitle("Baltimore Total Emissions")
-g2 <- ggplot(lasum, aes(year, Emissions)) + geom_point() 
-g2 <- g2 + geom_smooth(method = "lm") + coord_cartesian(ylim = c(0, 5000))
-g2 <- g2 + ggtitle("LA Total Emissions")
-g3 <- ggplot(balmean, aes(year, Emissions)) + geom_point()
-g3 <- g3 + geom_smooth(method = "lm") + coord_cartesian(ylim = c(0, 100))
-g3 <- g3 + ggtitle("Baltimore Average Emissions")
-g4 <- ggplot(lamean, aes(year, Emissions)) + geom_point()
-g4 <- g4 + geom_smooth(method = "lm") + coord_cartesian(ylim = c(0 , 100))
-g4 <- g4 + ggtitle("LA Average Emissions")
-grid.arrange(g1, g2, g3, g4)
+onRoadSummaryla <- summarize_at(onRoadla, vars(Emissions), sum)
+
+nonRoadSummaryla <- summarize_at(nonRoadla, vars(Emissions), sum)
+
+g3 <- ggplot(onRoadSummaryla, aes(year, Emissions)) + geom_area(fill = "blue")
+g3 <- g3 + coord_cartesian(ylim = c(0, 4800))
+g3 <- g3 + ggtitle("On Road - LA")
+g4 <- ggplot(nonRoadSummaryla, aes(year, Emissions)) + geom_area(fill = "pink")
+g4 <- g4 + coord_cartesian(ylim = c(0, 4800))
+g4 <- g4 + ggtitle("Non Road - LA")
+
+grid.arrange(g1, g2, g3, g4, nrow = 2)
 
 dev.copy(png, file = "plot6.png")
 dev.off()

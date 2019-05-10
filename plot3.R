@@ -35,7 +35,7 @@ g <- ggplot(mt, aes(year, value))
 g <- g + geom_point() + facet_grid(treshold_ID ~ type, scales = "free_y") 
 g <- g + geom_smooth(method = "lm") 
 g <- g + labs(title = "Average Yearly Emissions of PM2.5 in Baltimore", 
-              subtitle = "Sources of Above(Top Row) and Below(Bottom Row) 20 Tons per Year",
+              subtitle = "Sources of Above(Bottom Row) and Below(Top Row) 20 Tons per Year",
               caption = cap) + ylab("PM2.5 Emission in Tons")
 print(g)
 dev.copy(png, file = "plot3.png")
